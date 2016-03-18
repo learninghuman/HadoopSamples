@@ -1,0 +1,57 @@
+--- Step 1: Create a Hive table in ORC format. This is for the mapreduce input
+
+CREATE TABLE mr_hcat_input_orc (id int, age int)
+STORED AS ORC;
+****************************************************************************************************************************************************************
+
+--- Step 2: Populate the data for the above table
+
+----- Step 2.1: Create another hive table with text format.
+
+CREATE TABLE mr_hcat_input_text (id int, age int) 
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ',';
+
+----- 2.2: Save the data below in a text file
+1000,35
+2000,50
+3000,35
+4000,43
+5000,25
+6000,35
+7000,21
+8000,50
+
+----- 2.3: Copy the text file into the table's  folder
+
+hdfs dfs -put sample.txt /apps/hive/warehouse/mr_hcat_input_text
+
+----- 2.4: Load the data from the text formatted table to the ORC table.
+
+INSERT OVERWRITE TABLE mr_hcat_input_orc 
+SELECT * FROM mr_hcat_input_text 
+****************************************************************************************************************************************************************
+--- Step 3: Run the map reduce job
+
+----- 3.1: Create a Hive table in ORC format. This is for the map reduce output
+
+CREATE TABLE mr_output_orc (age int, total int)
+STORED AS ORC;
+
+----- 3.2 Run the hadoop jar command
+
+export HCAT_HOME=/usr/hdp/current/hive-webhcat
+export HIVE_HOME=/usr/hdp/current/hive-client
+export LIB_JARS=$HCAT_HOME/share/hcatalog/hive-hcatalog-core.jar,$HIVE_HOME/lib/hive-metastore.jar,$HIVE_HOME/lib/libthrift-0.9.2.jar,$HIVE_HOME/lib/hive-exec.jar,$HIVE_HOME/lib/libfb303-0.9.2.jar,$HIVE_HOME/lib/jdo-api-3.0.1.jar,$HIVE_HOME/lib/datanucleus-api-jdo-3.2.6.jar
+export HADOOP_CLASSPATH=/usr/hdp/current/hive-webhcat/share/hcatalog/*:/usr/hdp/current/hive-client/lib/*:/usr/hdp/current/hive-client/conf
+
+
+hadoop  jar mr-hcat.jar com.lhu.examples.mr.hcat.HCatalogMRJob -libjars ${LIB_JARS} mr_hcat_input_orc  mr_hcat_ouput_orc 
+****************************************************************************************************************************************************************
+
+Note: The folder locations are related to the Hortonworks distribution. Change it according to your installation.
+
+References:
+https://cwiki.apache.org/confluence/display/Hive/HCatalog+InputOutput
+http://stackoverflow.com/questions/36046226/mapreduce-and-hcatalog-integration-hcatoutputformat-classnotfoundexception
+http://stackoverflow.com/questions/36035593/mapreduce-and-hcatalog-integration-fails-to-use-mysql-metastore-fixed-see-co
